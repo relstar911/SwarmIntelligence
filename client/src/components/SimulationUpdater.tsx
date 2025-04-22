@@ -1,51 +1,34 @@
-import { useEffect, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useEffect } from 'react';
 import { useSimulation } from '../lib/stores/useSimulation';
 
 /**
- * This component handles the simulation updates using the useFrame hook
- * from React Three Fiber. It must be used within a Canvas component.
+ * This component uses setInterval instead of animation frame
+ * to drastically slow down simulation updates
  */
 const SimulationUpdater = () => {
-  const { updateSimulation, running, saveToDatabase } = useSimulation();
-  const throttleRef = useRef({ 
-    lastUpdate: 0,
-    lastDbSave: 0
-  });
+  const { updateSimulation, running } = useSimulation();
   
-  // Only log once
   useEffect(() => {
-    console.log("SimulationUpdater mounted with stabilized update rate");
+    console.log("SimulationUpdater mounted with stabilized interval");
+    
+    // Instead of animation frame, use a slow interval
+    // This will completely separate simulation from rendering
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    if (running) {
+      // Update only once per second (1 FPS)
+      intervalId = setInterval(() => {
+        updateSimulation(1/60); // Fixed time step
+      }, 1000);
+    }
     
     return () => {
+      if (intervalId) clearInterval(intervalId);
       console.log("SimulationUpdater unmounted");
     };
-  }, []);
-  
-  // Use useFrame hook to update simulation in animation loop
-  useFrame((_, delta) => {
-    // Skip updates when simulation is not running
-    if (!running) return;
-    
-    const now = Date.now();
-    
-    // EXTREME throttling to 4fps max for simulation logic updates
-    if (now - throttleRef.current.lastUpdate > 250) { // 250ms = 4fps
-      updateSimulation(delta);
-      throttleRef.current.lastUpdate = now;
-      
-      // Save to database every 30 seconds
-      if (now - throttleRef.current.lastDbSave > 30000) {
-        saveToDatabase().then(() => {
-          console.log('Simulation state saved to database.');
-        });
-        throttleRef.current.lastDbSave = now;
-      }
-    }
-  });
+  }, [running, updateSimulation]);
   
   return null;
 };
 
-// Export as a memoized component to prevent unnecessary re-renders
 export default SimulationUpdater;

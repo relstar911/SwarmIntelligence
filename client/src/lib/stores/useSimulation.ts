@@ -135,18 +135,8 @@ export const useSimulation = create<SimulationStore>()(
       const { world, timeScale } = get();
       const scaledDelta = deltaTime * timeScale;
       
-      // Throttle: Only update the simulation every 100ms of real time to reduce flickering
-      // This makes the simulation more stable by reducing the frequency of updates
-      const lastUpdateTime = get().lastUpdateTime || 0;
-      const currentTime = Date.now();
-      
-      // If less than 100ms has passed, don't update
-      if (currentTime - lastUpdateTime < 100) {
-        return;
-      }
-      
-      // Record update time for throttling
-      set({ lastUpdateTime: currentTime });
+      // VERY IMPORTANT: No throttling here anymore, since we're using setInterval
+      // Instead, we have a fixed slow update rate
       
       // Time tracking (1 real second = 1 simulated day at timeScale 1)
       const newTime = world.time + scaledDelta;

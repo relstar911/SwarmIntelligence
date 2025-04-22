@@ -9,7 +9,7 @@ import SimulationUpdater from './SimulationUpdater';
 import Terrain from './Terrain';
 import Water from './Water';
 import Vegetation from './Vegetation';
-import StableAgentsContainer from './StableAgentsContainer';
+import BasicAgent from './BasicAgent';
 import { Controls } from '../lib/types';
 
 /**
@@ -289,8 +289,14 @@ const World = () => {
         </mesh>
       ))}
       
-      {/* Stable Agents Container - Prevents position swapping and flickering */}
-      <StableAgentsContainer />
+      {/* Basic Agents - Simple static display with no animations */}
+      {agents.map(agent => (
+        <BasicAgent 
+          key={agent.id}
+          agent={agent}
+          isFocused={agent.id === focusedAgentId}
+        />
+      ))}
       
       {/* Resource visualization (simplified) - hidden by default */}
       {cellGrid.flat().map((cell, index) => (
