@@ -25,6 +25,8 @@ interface SimulationStore {
   timeScale: number;
   elapsedYears: number;
   timeline: TimelineEvent[];
+  simulationId?: number; // Database simulation ID
+  lastUpdateTime?: number; // For simulation update throttling
   
   // Environmental controls
   setEnvironmentalParameter: (param: keyof EnvironmentalParameters, value: number) => void;
@@ -40,6 +42,10 @@ interface SimulationStore {
   
   // Simulation updates
   updateSimulation: (deltaTime: number) => void;
+  
+  // Database persistence
+  saveToDatabase: () => Promise<void>;
+  loadFromDatabase: () => Promise<void>;
   
   // Utilities
   getAgentById: (id: string) => Agent | undefined;
@@ -126,6 +132,19 @@ export const useSimulation = create<SimulationStore>()(
     updateSimulation: (deltaTime) => {
       const { world, timeScale } = get();
       const scaledDelta = deltaTime * timeScale;
+      
+      // Throttle: Only update the simulation every 100ms of real time to reduce flickering
+      // This makes the simulation more stable by reducing the frequency of updates
+      const lastUpdateTime = get().lastUpdateTime || 0;
+      const currentTime = Date.now();
+      
+      // If less than 100ms has passed, don't update
+      if (currentTime - lastUpdateTime < 100) {
+        return;
+      }
+      
+      // Record update time for throttling
+      set({ lastUpdateTime: currentTime });
       
       // Time tracking (1 real second = 1 simulated day at timeScale 1)
       const newTime = world.time + scaledDelta;
