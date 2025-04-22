@@ -1,14 +1,20 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, Suspense } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stats, useTexture } from '@react-three/drei';
+import { OrbitControls, Stats, Sky, Stars, Cloud, Clouds, useTexture } from '@react-three/drei';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSimulation } from '../lib/stores/useSimulation';
 import Agent from './Agent';
 import Environment from './Environment';
 import SimulationUpdater from './SimulationUpdater';
+import Terrain from './Terrain';
+import Water from './Water';
+import Vegetation from './Vegetation';
 import { Controls } from '../lib/types';
 
+/**
+ * Enhanced natural world environment with terrain, water, and vegetation
+ */
 const World = () => {
   const controlsRef = useRef<any>();
   const { camera } = useThree();
@@ -24,12 +30,6 @@ const World = () => {
   // Get simulation state
   const { world, focusedAgentId } = useSimulation();
   const { agents, resources, cellGrid, dayNightCycle } = world;
-  
-  // Ground texture
-  const grassTexture = useTexture('/textures/grass.png');
-  grassTexture.wrapS = THREE.RepeatWrapping;
-  grassTexture.wrapT = THREE.RepeatWrapping;
-  grassTexture.repeat.set(20, 20);
   
   // Handle camera movement based on keyboard input
   useFrame((_, delta) => {
@@ -122,6 +122,14 @@ const World = () => {
     0
   ];
   
+  // Time of day parameters for sky
+  const isDay = dayNightCycle > 0.25 && dayNightCycle < 0.75;
+  const sunriseOrSunset = (dayNightCycle > 0.2 && dayNightCycle < 0.3) || 
+                          (dayNightCycle > 0.7 && dayNightCycle < 0.8);
+  
+  // Cloud parameters based on time of day
+  const cloudOpacity = isDay ? 1 : 0.3;
+  
   return (
     <>
       {/* Add the simulation updater */}
@@ -135,38 +143,109 @@ const World = () => {
         enableDamping={true}
         dampingFactor={0.05}
         minDistance={1}
-        maxDistance={100}
+        maxDistance={150}
         maxPolarAngle={Math.PI / 2 - 0.1} // Prevent going below ground
       />
       
-      {/* Lighting */}
+      {/* Enhanced Atmospheric Lighting */}
       <ambientLight intensity={ambientIntensity} />
       <directionalLight 
         position={sunPosition as [number, number, number]} 
         intensity={sunIntensity} 
-        castShadow 
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-far={100}
+        shadow-camera-left={-50}
+        shadow-camera-right={50}
+        shadow-camera-top={50}
+        shadow-camera-bottom={-50}
       />
       <hemisphereLight args={['#b1e1ff', '#b97a20', 0.7]} />
       
-      {/* Skybox */}
-      <Environment dayNightCycle={dayNightCycle} />
+      {/* Dynamic Sky based on day/night cycle */}
+      <Sky 
+        distance={450000} 
+        sunPosition={sunPosition as [number, number, number]}
+        inclination={0.6}
+        azimuth={dayNightCycle * 360}
+        turbidity={isDay ? 10 : 20}
+        rayleigh={isDay ? 0.5 : 1}
+        mieCoefficient={0.005}
+        mieDirectionalG={0.8}
+      />
       
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial 
-          map={grassTexture} 
-          color="#4B8B3B" 
-          roughness={0.8}
-          metalness={0.1}
-        />
-      </mesh>
+      {/* Stars (visible at night) */}
+      <Stars 
+        radius={100} 
+        depth={50} 
+        count={5000} 
+        factor={4} 
+        fade 
+        speed={0.5}
+        visible={!isDay} 
+      />
+      
+      {/* Clouds */}
+      <Suspense fallback={null}>
+        <Clouds
+          material={THREE.MeshBasicMaterial}
+          position={[0, 80, 0]}
+          opacity={cloudOpacity}
+          speed={0.2}
+          width={100}
+          segments={20}
+        >
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Cloud 
+              key={i}
+              position={[
+                (Math.random() - 0.5) * 100, 
+                20 + Math.random() * 20, 
+                (Math.random() - 0.5) * 100
+              ]}
+              speed={0.1}
+              opacity={cloudOpacity}
+            />
+          ))}
+        </Clouds>
+      </Suspense>
+      
+      {/* Natural Terrain with height variation */}
+      <Terrain 
+        size={100} 
+        height={8} 
+        resolution={128} 
+        roughness={0.8}
+        position={[0, -0.5, 0]}
+      />
+      
+      {/* Water Features */}
+      <Water 
+        position={[-15, 0, 20]} 
+        size={25}
+        depth={2}
+        color={sunriseOrSunset ? '#FF9E80' : '#29B6F6'} // Sunset reflection
+        opacity={0.8}
+      />
+
+      {/* Vegetation */}
+      <Vegetation 
+        count={200}
+        area={100}
+        minHeight={1}
+        maxHeight={5}
+        centerClearRadius={10}
+      />
       
       {/* Resources */}
       {resources.map(resource => (
         <mesh 
           key={resource.id} 
-          position={[resource.position.x, resource.position.y, resource.position.z]}
+          position={[
+            resource.position.x, 
+            resource.position.y + (resource.type === 'light' ? 4 : 0), // Light resources float above
+            resource.position.z
+          ]}
           castShadow
         >
           {resource.type === 'food' ? (
@@ -196,14 +275,7 @@ const World = () => {
         <Agent key={agent.id} agent={agent} isFocused={agent.id === focusedAgentId} />
       ))}
       
-      {/* Visualization helpers */}
-      <gridHelper 
-        args={[100, 10]} 
-        position={[0, 0.01, 0]} 
-        rotation={[0, 0, 0]} 
-      />
-      
-      {/* Resource visualization (simplified) */}
+      {/* Resource visualization (simplified) - hidden by default */}
       {cellGrid.flat().map((cell, index) => (
         <mesh 
           key={`cell-${index}`} 
