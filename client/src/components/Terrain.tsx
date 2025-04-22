@@ -1,59 +1,47 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { useTexture } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
 
 interface TerrainProps {
   size?: number;
   height?: number;
   resolution?: number;
-  roughness?: number;
   position?: [number, number, number];
 }
 
 /**
- * A procedurally generated natural terrain with hills and valleys
+ * Eine vereinfachte Version des Terrains ohne Animation für bessere Stabilität
  */
 const Terrain: React.FC<TerrainProps> = ({
   size = 100,
-  height = 8,
-  resolution = 128,
-  roughness = 0.8,
+  height = 5,
+  resolution = 64, // Reduzierte Auflösung für bessere Performance
   position = [0, -0.5, 0]
 }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  // Load terrain textures
+  // Textur laden (kein Wechsel/Animation)
   const grassTexture = useTexture('/textures/grass.png');
-  const sandTexture = useTexture('/textures/sand.jpg');
   
-  // Configure textures
+  // Textur konfigurieren
   grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
-  sandTexture.wrapS = sandTexture.wrapT = THREE.RepeatWrapping;
-  
   grassTexture.repeat.set(size / 10, size / 10);
-  sandTexture.repeat.set(size / 5, size / 5);
 
-  // Generate terrain geometry with height map
+  // Geometrie nur einmal generieren
   const geometry = useMemo(() => {
+    console.log("Generating static terrain geometry");
     const geo = new THREE.PlaneGeometry(size, size, resolution - 1, resolution - 1);
-    const vertices = geo.attributes.position.array;
+    const vertices = geo.attributes.position.array as Float32Array;
     
-    // Generate height map
-    const simplex = new SimplexNoise(Math.random());
+    // Height map mit festem Seed für Reproduzierbarkeit
+    const simplex = new SimplexNoise(12345); // Fixed seed
     
     for (let i = 0; i < vertices.length; i += 3) {
       const x = vertices[i];
       const z = vertices[i + 2];
       
-      // Multi-layered noise for more natural terrain
-      const frequency1 = 0.02;
-      const frequency2 = 0.1;
+      // Einfachere Höhenberechnung
+      let y = simplex.noise(x * 0.02, z * 0.02) * height;
       
-      let y = simplex.noise(x * frequency1, z * frequency1) * height;
-      y += simplex.noise(x * frequency2, z * frequency2) * height * 0.3;
-      
-      // Flatten the center area slightly for the initial agents to have smoother ground
+      // Zentrum flacher machen für die Agenten
       const distanceFromCenter = Math.sqrt(x * x + z * z);
       const centerFlatteningFactor = Math.max(0, 1 - Math.exp(-distanceFromCenter * 0.01));
       
@@ -62,76 +50,18 @@ const Terrain: React.FC<TerrainProps> = ({
     
     geo.computeVertexNormals();
     return geo;
-  }, [size, height, resolution, roughness]);
-
-  // Blend textures based on height and slope
-  const fragmentShader = `
-    uniform sampler2D grassTexture;
-    uniform sampler2D sandTexture;
-    varying vec3 vNormal;
-    varying vec2 vUv;
-    varying float vHeight;
-    
-    void main() {
-      // Blend between sand and grass based on height and slope
-      float slope = 1.0 - vNormal.y; // 0 is flat, 1 is vertical
-      float heightFactor = smoothstep(0.0, 0.3, vHeight / 8.0);
-      float slopeFactor = smoothstep(0.0, 0.6, slope);
-      
-      vec4 grassColor = texture2D(grassTexture, vUv);
-      vec4 sandColor = texture2D(sandTexture, vUv);
-      
-      float sandMix = max(1.0 - heightFactor, slopeFactor);
-      
-      // Darken areas based on slope for additional detail
-      float shadowFactor = mix(1.0, 0.8, slope * 0.5);
-      
-      gl_FragColor = mix(grassColor, sandColor, sandMix) * shadowFactor;
-    }
-  `;
-
-  const vertexShader = `
-    uniform float time;
-    varying vec2 vUv;
-    varying vec3 vNormal;
-    varying float vHeight;
-    
-    void main() {
-      vUv = uv;
-      vNormal = normal;
-      vHeight = position.y;
-      
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `;
-
-  // Create shader uniforms
-  const uniforms = useMemo(() => ({
-    grassTexture: { value: grassTexture },
-    sandTexture: { value: sandTexture },
-    time: { value: 0 }
-  }), [grassTexture, sandTexture]);
-
-  // Animate wind effect (subtle movement)
-  useFrame(({ clock }) => {
-    if (meshRef.current && uniforms.time) {
-      uniforms.time.value = clock.getElapsedTime();
-    }
-  });
+  }, [size, height, resolution]);
 
   return (
     <mesh
-      ref={meshRef}
       position={position}
       rotation={[-Math.PI / 2, 0, 0]}
-      castShadow
       receiveShadow
     >
       <primitive object={geometry} attach="geometry" />
-      <shaderMaterial
-        fragmentShader={fragmentShader}
-        vertexShader={vertexShader}
-        uniforms={uniforms}
+      <meshStandardMaterial 
+        map={grassTexture}
+        roughness={0.8}
         side={THREE.DoubleSide}
       />
     </mesh>
@@ -139,40 +69,42 @@ const Terrain: React.FC<TerrainProps> = ({
 };
 
 /**
- * Simplex Noise implementation for terrain generation
+ * Vereinfachte Simplex Noise Implementierung
  */
 class SimplexNoise {
   private grad3: number[][];
   private p: number[];
   private perm: number[];
-  private simplex: number[][];
 
-  constructor(seed = Math.random()) {
+  constructor(seed: number) {
     this.grad3 = [
       [1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0],
       [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
       [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]
     ];
-    this.p = [];
-    for (let i = 0; i < 256; i++) {
-      this.p[i] = Math.floor(seed * 256);
+    
+    // Deterministische Initialisierung mit festem Seed
+    this.p = Array(256).fill(0).map((_, i) => i);
+    
+    // Fisher-Yates Shuffle mit deterministic seed
+    let seedRandom = this.seededRandom(seed);
+    for (let i = this.p.length - 1; i > 0; i--) {
+      const j = Math.floor(seedRandom() * (i + 1));
+      [this.p[i], this.p[j]] = [this.p[j], this.p[i]];
     }
     
     this.perm = [];
     for (let i = 0; i < 512; i++) {
       this.perm[i] = this.p[i & 255];
     }
-    
-    this.simplex = [
-      [0, 1, 2, 3], [0, 1, 3, 2], [0, 0, 0, 0], [0, 2, 3, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 2, 3, 0],
-      [0, 2, 1, 3], [0, 0, 0, 0], [0, 3, 1, 2], [0, 3, 2, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 3, 2, 0],
-      [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],
-      [1, 2, 0, 3], [0, 0, 0, 0], [1, 3, 0, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 3, 0, 1], [2, 3, 1, 0],
-      [1, 0, 2, 3], [1, 0, 3, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 3, 1], [0, 0, 0, 0], [2, 1, 3, 0],
-      [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],
-      [2, 0, 1, 3], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [3, 0, 1, 2], [3, 0, 2, 1], [0, 0, 0, 0], [3, 1, 2, 0],
-      [2, 1, 0, 3], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [3, 1, 0, 2], [0, 0, 0, 0], [3, 2, 0, 1], [3, 2, 1, 0]
-    ];
+  }
+
+  // Simple seeded random function
+  private seededRandom(seed: number) {
+    return function() {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
   }
 
   private dot(g: number[], x: number, y: number): number {

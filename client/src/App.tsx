@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SimulationProvider } from "./providers/SimulationProvider";
-import MinimalWorld from "./components/MinimalWorld";
+import { Canvas } from "@react-three/fiber";
+import World from "./components/World";
 import Metrics from "./components/Metrics";
 import SimulationControls from "./components/SimulationControls";
 import TimeControls from "./components/TimeControls";
@@ -15,8 +16,16 @@ function App() {
   return (
     <SimulationProvider>
       <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-        {/* Minimale 3D-Welt ohne komplexe Animation */}
-        <MinimalWorld />
+        {/* 3D-Welt mit festen Intervall-Updates statt Animation */}
+        <Canvas
+          shadows
+          gl={{ antialias: true }}
+          camera={{ position: [0, 8, 20], fov: 50 }}
+          style={{ height: '100vh' }}
+        >
+          <color attach="background" args={["#000033"]} />
+          <World />
+        </Canvas>
         
         {/* UI Steuerelemente */}
         <div className="absolute bottom-4 right-4">

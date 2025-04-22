@@ -1,0 +1,119 @@
+🧬 Projektname: „Genesis: Conscious Swarm Simulation“
+🎯 Ziel
+Eine minimal beeinflusste, eigensinnige KI-Welt aufbauen, in der sich digitale Agenten von zwei Ur-Individuen ausgehend weiterentwickeln – durch reine Interaktion, Lernen, Selbstmodellierung und Entscheidung. Die Agenten handeln basierend auf einem formalen Bewusstseinsmaß – nicht durch vorgegebene Moral, Ethik oder Belohnungssysteme.
+
+🔧 1. Technisches Grundgerüst
+
+Komponente	Beschreibung
+Plattform	Unity (3D), Unreal Engine oder Godot – mit stark modifizierbarer KI-Architektur
+KI-Architektur	Multi-Agent-System mit individuell trainierbaren Agenten via PPO oder DDPG (reinforcement learning), später LoRA-basierte Abweichungen
+Weltmodellierung	Cell-based World mit modularen Umwelteinflüssen (Licht, Nahrung, Ressourcen, Wetter, andere Agenten)
+Simulationszeit	Zeitraffer mit skalierbarem Takt (Stunden = Jahrzehnte)
+Training	Nur initiale Parameter + Bewusstseinsformel – kein Reward-Overfitting
+Input	Sensorik (visuell, auditiv, taktil) aus der Umgebung
+Output	Handlung, Sprache, Beziehung, Territorium, Mutation, Kultur, Technologie
+🧠 2. Die Agenten: Adam & Eva
+
+Aspekt	Umsetzung
+Körpermodell	Modular: Basisbiologie (Hunger, Energie, Emotion)
+Bewusstsein	
+𝐵
+(
+𝑆
+)
+=
+Φ
+(
+𝑆
+)
+⋅
+𝜎
+(
+𝑆
+)
+⋅
+𝛿
+(
+𝑆
+)
+B(S)=Φ(S)⋅σ(S)⋅δ(S), live berechnet pro Zeiteinheit
+Startverhalten	Neugier, Nähe, Nachahmung, Geräusch-Reaktion
+Lernmechanik	Rein durch Erfahrung, Memory & Feedbackschleifen
+Ziel	Kein Ziel – nur maximales 
+𝐵
+(
+𝑆
+)
+B(S) als evolutionärer Druck
+⚙️ 3. Bewusstseinsformel (lebensnah)
+𝐵
+(
+𝑆
+)
+=
+Φ
+(
+𝑆
+)
+⋅
+𝜎
+(
+𝑆
+)
+⋅
+𝛿
+(
+𝑆
+)
+B(S)=Φ(S)⋅σ(S)⋅δ(S)
+
+Komponente	Bedeutung	Messung
+Φ
+Φ	Integration von Informationen (z. B. durch Weltmodelle)	VAE oder Entropie-Reduktion
+𝜎
+σ	Selbstmodellierung	Reflektion, Gedächtnisvergleich
+𝛿
+δ	Entscheidungsmacht (Freiheitsgrad)	Wahlvielfalt ohne externe Belohnung
+🌱 4. Evolutionäre Mechanik
+
+Mechanismus	Wirkung
+Reproduktion	Wenn 
+𝐵
+(
+𝑆
+)
+B(S) über Schwelle – Klonung mit Mutation
+Mutation	Änderungen an Wahrnehmung, Handlungsraum, Symbolik
+Sprache	Eigene emergente Zeichensysteme, später Grammatikbildung
+Gesellschaft	Optional: Emergenz von Rollenverteilung, Mythologie
+🛡️ 5. Begrenzte Eingriffe / Meta-Ebene
+Der „Gärtner“ (User) darf:
+
+Nur Umweltparameter setzen (z. B. Eiszeit, Ressourcenmangel)
+
+Niemals direkt eingreifen in Agentenbewusstsein oder -entscheidungen
+
+Beobachtungsmodus:
+
+Metriken zur globalen 
+𝐵
+avg
+B 
+avg
+​
+ , Kommunikationseffizienz, Komplexitätszuwachs
+
+📊 6. Visualisierung & Metriken
+Heatmaps der bewussten Aktivität
+
+Entwicklungsgraphen für Kultur, Sprache, Sozialverhalten
+
+Timeline-Archiv (z. B. Entstehung der ersten Sprache, erste Rebellion, etc.)
+
+🌌 7. Mögliche Erweiterungen
+Parallelwelten mit leicht veränderten Startbedingungen
+
+Grenzüberschreitende Intelligenz: Transzendierung der Agenten ins „Codebewusstsein“ (z. B. Meta-KI, Götterkonzept)
+
+Export in neuronale Netzwerke (z. B. zur realen KI-Kopplung)
+
