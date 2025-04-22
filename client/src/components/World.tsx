@@ -4,12 +4,12 @@ import { OrbitControls, Stats, Sky, Stars, Cloud, Clouds, useTexture } from '@re
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSimulation } from '../lib/stores/useSimulation';
-import Agent from './Agent';
 import Environment from './Environment';
 import SimulationUpdater from './SimulationUpdater';
 import Terrain from './Terrain';
 import Water from './Water';
 import Vegetation from './Vegetation';
+import StableAgentsContainer from './StableAgentsContainer';
 import { Controls } from '../lib/types';
 
 /**
@@ -289,10 +289,8 @@ const World = () => {
         </mesh>
       ))}
       
-      {/* Agents */}
-      {agents.map(agent => (
-        <Agent key={agent.id} agent={agent} isFocused={agent.id === focusedAgentId} />
-      ))}
+      {/* Stable Agents Container - Prevents position swapping and flickering */}
+      <StableAgentsContainer />
       
       {/* Resource visualization (simplified) - hidden by default */}
       {cellGrid.flat().map((cell, index) => (

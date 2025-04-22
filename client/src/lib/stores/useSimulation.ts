@@ -64,6 +64,8 @@ export const useSimulation = create<SimulationStore>()(
     elapsedYears: 0,
     timeline: [],
     focusedAgentId: null,
+    simulationId: undefined,
+    lastUpdateTime: 0,
     
     setEnvironmentalParameter: (param, value) => set(state => ({
       world: {
@@ -211,7 +213,51 @@ export const useSimulation = create<SimulationStore>()(
       timeline: [...state.timeline, event]
     })),
     
-    setFocusedAgent: (id) => set({ focusedAgentId: id })
+    setFocusedAgent: (id) => set({ focusedAgentId: id }),
+    
+    // Database persistence functions
+    saveToDatabase: async () => {
+      try {
+        const { world, simulationId } = get();
+        const { simulationApi } = await import('../queryClient');
+        
+        if (simulationId) {
+          // Update existing simulation
+          await simulationApi.saveSimulationState(simulationId, world);
+        } else {
+          // Create new simulation
+          const result = await simulationApi.createSimulation('Genesis Simulation', world);
+          if (result && result.id) {
+            set({ simulationId: result.id });
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Failed to save simulation to database:', error);
+        return false;
+      }
+    },
+    
+    loadFromDatabase: async () => {
+      try {
+        const { simulationApi } = await import('../queryClient');
+        const result = await simulationApi.getActiveSimulation();
+        
+        if (result && result.state) {
+          set({ 
+            world: result.state,
+            simulationId: result.id,
+            elapsedYears: result.state.timeElapsed / 365
+          });
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Failed to load simulation from database:', error);
+        return false;
+      }
+    }
   }))
 );
 
