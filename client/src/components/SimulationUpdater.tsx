@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useSimulation } from '../lib/stores/useSimulation';
 
@@ -9,16 +9,25 @@ import { useSimulation } from '../lib/stores/useSimulation';
 const SimulationUpdater: React.FC = () => {
   const { running, updateSimulation } = useSimulation();
   
-  // Run simulation loop using useFrame
-  useFrame((_, delta) => {
+  // Reference to track time between updates
+  const lastUpdateTimeRef = useRef(0);
+  const updateIntervalRef = useRef(1/30); // Update at 30 fps maximum
+  
+  // Run simulation loop using useFrame but at a lower, more stable rate
+  useFrame((state, delta) => {
     if (running) {
-      updateSimulation(delta);
+      const currentTime = state.clock.getElapsedTime();
+      // Only update every 1/30th of a second
+      if (currentTime - lastUpdateTimeRef.current >= updateIntervalRef.current) {
+        updateSimulation(updateIntervalRef.current); // Fixed timestep
+        lastUpdateTimeRef.current = currentTime;
+      }
     }
   });
   
   // For debugging purposes
   useEffect(() => {
-    console.log('SimulationUpdater mounted');
+    console.log('SimulationUpdater mounted with stabilized update rate');
     return () => console.log('SimulationUpdater unmounted');
   }, []);
   

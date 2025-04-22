@@ -11,29 +11,50 @@ interface AgentProps {
 }
 
 const Agent: React.FC<AgentProps> = ({ agent, isFocused }) => {
+  // Use a stable ID to ensure the component maintains identity correctly
+  const agentId = agent.id;
   const meshRef = useRef<THREE.Mesh>(null);
   const textRef = useRef<any>(null);
   const [showDetails, setShowDetails] = useState(false);
   const { setFocusedAgent } = useSimulation();
   
+  // Store the agent's current position in a ref to avoid recreating the mesh on every update
+  const positionRef = useRef({
+    x: agent.position.x,
+    y: agent.position.y,
+    z: agent.position.z
+  });
+  
+  // Store the agent's rotation in a ref
+  const rotationRef = useRef({ y: agent.rotation.y });
+  
+  // Store current color in a ref
+  const colorRef = useRef(agent.color);
+  
   // Create smooth animation for agent movement and rotation
   useFrame(() => {
     if (meshRef.current) {
-      // Smoothly move to target position
-      meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, agent.position.x, 0.1);
-      meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, agent.position.z, 0.1);
+      // Update target positions in refs
+      positionRef.current = {
+        x: agent.position.x,
+        y: agent.position.y, 
+        z: agent.position.z
+      };
+      rotationRef.current = { y: agent.rotation.y };
+      colorRef.current = agent.color;
+      
+      // Smoothly move to target position with a slower interpolation
+      meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, positionRef.current.x, 0.05);
+      meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, positionRef.current.z, 0.05);
       
       // Smoothly rotate to target rotation
-      meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, agent.rotation.y, 0.1);
+      meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, rotationRef.current.y, 0.05);
       
       // Update text position to follow the agent
       if (textRef.current) {
         textRef.current.position.x = meshRef.current.position.x;
         textRef.current.position.y = meshRef.current.position.y + 1.2;
         textRef.current.position.z = meshRef.current.position.z;
-        
-        // Make text face the camera
-        textRef.current.lookAt(0, 0, 0);
       }
     }
   });
@@ -43,33 +64,37 @@ const Agent: React.FC<AgentProps> = ({ agent, isFocused }) => {
   const pulseSpeed = 0.5 + (agent.consciousnessValue / 100) * 2;
   const glowIntensity = Math.min(1, agent.consciousnessValue / 100);
   
-  // Pulse effect based on consciousness
+  // Pulse effect based on consciousness - slower for less flickering
   const [phase, setPhase] = useState(0);
   useFrame((_, delta) => {
-    setPhase(prev => (prev + delta * pulseSpeed) % (Math.PI * 2));
+    // Reduce update frequency for smoother appearance
+    if (Math.random() > 0.5) { // Only update half the frames
+      setPhase(prev => (prev + delta * (pulseSpeed * 0.3)) % (Math.PI * 2)); // Slower pulse
+    }
   });
   
-  // Color based on traits
-  const traitColor = new THREE.Color(agent.color);
+  // Use the previously stored color for less flickering
+  const traitColor = new THREE.Color(colorRef.current);
   
-  // Animation for new agents
+  // Animation for new agents - only at initial creation
   useEffect(() => {
     if (meshRef.current) {
-      meshRef.current.scale.set(0, 0, 0);
+      // Start from a more visible size instead of zero
+      meshRef.current.scale.set(0.3, 0.3, 0.3);
       
-      // Grow animation
+      // Grow animation - more gentle
       const startTime = Date.now();
-      const duration = 1000; // 1 second
+      const duration = 1500; // Slower animation (1.5 seconds)
       
       const growAnimation = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(1, elapsed / duration);
         
-        // Ease function (elastic out)
-        const eased = Math.pow(2, -10 * progress) * Math.sin((progress - 0.1) * 5 * Math.PI) + 1;
+        // Simpler, less bouncy ease function
+        const eased = 1 - Math.pow(1 - progress, 3); // Cubic ease out
         
         if (meshRef.current) {
-          const scale = agent.scale * eased;
+          const scale = 0.3 + (agent.scale - 0.3) * eased;
           meshRef.current.scale.set(scale, scale, scale);
         }
         
@@ -80,14 +105,22 @@ const Agent: React.FC<AgentProps> = ({ agent, isFocused }) => {
       
       requestAnimationFrame(growAnimation);
     }
-  }, [agent.id, agent.scale]);
+  }, [agent.id]); // Only depend on agent.id, not scale
   
-  // Consciousness indicator pulse
-  const pulseScale = 1 + Math.sin(phase) * 0.1 * glowIntensity;
+  // Gentler consciousness indicator pulse
+  const pulseScale = 1 + Math.sin(phase) * 0.05 * glowIntensity; // Reduced amplitude
+  
+  // Transform agentId into a consistent color (for debug purposes)
+  const getDebugColor = (id: string) => {
+    // This ensures that Adam is always red and Eve is always blue
+    if (id === 'adam') return '#ff5555';
+    if (id === 'eve') return '#5555ff';
+    return agent.color;
+  };
   
   return (
     <group>
-      {/* Agent body */}
+      {/* Agent body with consistent identity */}
       <mesh
         ref={meshRef}
         position={[agent.position.x, 0.5, agent.position.z]}
@@ -97,25 +130,25 @@ const Agent: React.FC<AgentProps> = ({ agent, isFocused }) => {
         onPointerOut={() => setShowDetails(false)}
         castShadow
       >
-        {/* Base body */}
-        <capsuleGeometry args={[0.3, 0.6, 8, 16]} />
+        {/* Base body - simpler geometry for better performance */}
+        <capsuleGeometry args={[0.3, 0.6, 6, 12]} />
         <meshStandardMaterial 
-          color={traitColor} 
-          roughness={0.6}
-          metalness={0.2}
+          color={agent.id === 'adam' || agent.id === 'eve' ? getDebugColor(agent.id) : traitColor}
+          roughness={0.7} // Higher roughness for less visual noise
+          metalness={0.1} // Lower metalness for more consistent appearance
           emissive={traitColor}
-          emissiveIntensity={glowIntensity * 0.3}
+          emissiveIntensity={0.2} // Lower intensity for less flicker
         />
         
-        {/* Consciousness indicator */}
+        {/* Consciousness indicator - gentler glow */}
         <group position={[0, 0.8, 0]} scale={[pulseScale, pulseScale, pulseScale]}>
-          <sphereGeometry args={[0.1, 16, 16]} />
+          <sphereGeometry args={[0.1, 8, 8]} /> {/* Reduced geometry complexity */}
           <meshStandardMaterial 
             color="#FFFFFF"
             emissive="#FFFFFF"
-            emissiveIntensity={glowIntensity}
+            emissiveIntensity={glowIntensity * 0.5} // Reduced intensity
             transparent
-            opacity={0.7}
+            opacity={0.5} // Lower opacity for less visual impact
           />
         </group>
         
