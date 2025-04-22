@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useSimulation } from '../lib/stores/useSimulation';
 
@@ -6,33 +6,46 @@ import { useSimulation } from '../lib/stores/useSimulation';
  * This component handles the simulation updates using the useFrame hook
  * from React Three Fiber. It must be used within a Canvas component.
  */
-const SimulationUpdater: React.FC = () => {
-  const { running, updateSimulation } = useSimulation();
+const SimulationUpdater = () => {
+  const { updateSimulation, running, saveToDatabase } = useSimulation();
+  const throttleRef = useRef({ 
+    lastUpdate: 0,
+    lastDbSave: 0
+  });
   
-  // Reference to track time between updates
-  const lastUpdateTimeRef = useRef(0);
-  const updateIntervalRef = useRef(1/30); // Update at 30 fps maximum
+  // Only log once
+  useEffect(() => {
+    console.log("SimulationUpdater mounted with stabilized update rate");
+    
+    return () => {
+      console.log("SimulationUpdater unmounted");
+    };
+  }, []);
   
-  // Run simulation loop using useFrame but at a lower, more stable rate
-  useFrame((state, delta) => {
-    if (running) {
-      const currentTime = state.clock.getElapsedTime();
-      // Only update every 1/30th of a second
-      if (currentTime - lastUpdateTimeRef.current >= updateIntervalRef.current) {
-        updateSimulation(updateIntervalRef.current); // Fixed timestep
-        lastUpdateTimeRef.current = currentTime;
+  // Use useFrame hook to update simulation in animation loop
+  useFrame((_, delta) => {
+    // Skip updates when simulation is not running
+    if (!running) return;
+    
+    const now = Date.now();
+    
+    // EXTREME throttling to 4fps max for simulation logic updates
+    if (now - throttleRef.current.lastUpdate > 250) { // 250ms = 4fps
+      updateSimulation(delta);
+      throttleRef.current.lastUpdate = now;
+      
+      // Save to database every 30 seconds
+      if (now - throttleRef.current.lastDbSave > 30000) {
+        saveToDatabase().then(() => {
+          console.log('Simulation state saved to database.');
+        });
+        throttleRef.current.lastDbSave = now;
       }
     }
   });
   
-  // For debugging purposes
-  useEffect(() => {
-    console.log('SimulationUpdater mounted with stabilized update rate');
-    return () => console.log('SimulationUpdater unmounted');
-  }, []);
-  
-  // This component doesn't render anything
   return null;
 };
 
+// Export as a memoized component to prevent unnecessary re-renders
 export default SimulationUpdater;

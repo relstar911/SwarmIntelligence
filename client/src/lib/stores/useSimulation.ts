@@ -44,8 +44,8 @@ interface SimulationStore {
   updateSimulation: (deltaTime: number) => void;
   
   // Database persistence
-  saveToDatabase: () => Promise<void>;
-  loadFromDatabase: () => Promise<void>;
+  saveToDatabase: () => Promise<boolean>;
+  loadFromDatabase: () => Promise<boolean>;
   
   // Utilities
   getAgentById: (id: string) => Agent | undefined;
