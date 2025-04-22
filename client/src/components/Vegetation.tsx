@@ -75,20 +75,28 @@ const Vegetation: React.FC<VegetationProps> = ({
     return data;
   }, [count, area, minHeight, maxHeight, centerClearRadius]);
 
-  // Simple wind effect animation
+  // Very subtle wind effect animation
   useFrame(({ clock }) => {
     if (groupRef.current) {
-      const time = clock.getElapsedTime();
+      const time = clock.getElapsedTime() * 0.2; // Slow down time
       const trees = groupRef.current.children;
       
+      // Only update every few frames to reduce performance impact
+      if (Math.floor(time * 10) % 5 !== 0) return;
+      
       trees.forEach((tree, i) => {
-        // Apply gentle swaying motion to the trees
-        const canopy = tree.children[1]; // Assuming trunk is [0] and canopy is [1]
-        const windStrength = 0.01;
-        const windFrequency = 1 + i % 5 * 0.1; // Slightly different frequencies
-        
-        canopy.rotation.x = Math.sin(time * windFrequency) * windStrength;
-        canopy.rotation.z = Math.cos(time * windFrequency * 0.7) * windStrength;
+        // Apply very gentle swaying motion to the trees
+        if (i % 3 === 0) { // Only animate every third tree for performance
+          const canopy = tree.children[1]; // Assuming trunk is [0] and canopy is [1]
+          if (canopy) {
+            const windStrength = 0.003; // Much subtler movement
+            const windFrequency = 0.2 + (i % 5) * 0.02; // Slower frequencies
+            
+            // Very gentle rotation
+            canopy.rotation.x = Math.sin(time * windFrequency) * windStrength;
+            canopy.rotation.z = Math.cos(time * windFrequency * 0.5) * windStrength;
+          }
+        }
       });
     }
   });

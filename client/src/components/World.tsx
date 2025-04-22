@@ -147,67 +147,86 @@ const World = () => {
         maxPolarAngle={Math.PI / 2 - 0.1} // Prevent going below ground
       />
       
-      {/* Enhanced Atmospheric Lighting */}
-      <ambientLight intensity={ambientIntensity} />
+      {/* Enhanced Atmospheric Lighting with softer shadows */}
+      <ambientLight intensity={ambientIntensity * 0.7 + 0.2} /> {/* Higher base to reduce contrast */}
       <directionalLight 
         position={sunPosition as [number, number, number]} 
-        intensity={sunIntensity} 
+        intensity={sunIntensity * 0.8} // Reduced intensity
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]} // Lower resolution but adequate
         shadow-camera-far={100}
         shadow-camera-left={-50}
         shadow-camera-right={50}
         shadow-camera-top={50}
         shadow-camera-bottom={-50}
+        shadow-radius={2} // Blur shadow edges for softer look
+        shadow-bias={-0.001} // Reduce shadow acne
       />
-      <hemisphereLight args={['#b1e1ff', '#b97a20', 0.7]} />
       
-      {/* Dynamic Sky based on day/night cycle */}
+      {/* Secondary fill light to soften shadows */}
+      <directionalLight 
+        position={[-30, 30, 30]} 
+        intensity={0.2} 
+        color="#E0E8FF" // Slightly blue to simulate sky light
+      />
+      
+      {/* Hemisphere light - gentler ground/sky contrast */}
+      <hemisphereLight args={['#d0e0ff', '#f0e0c0', 0.4]} />
+      
+      {/* Dynamic Sky based on day/night cycle - gentler parameters */}
       <Sky 
         distance={450000} 
         sunPosition={sunPosition as [number, number, number]}
         inclination={0.6}
         azimuth={dayNightCycle * 360}
-        turbidity={isDay ? 10 : 20}
-        rayleigh={isDay ? 0.5 : 1}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.8}
+        turbidity={isDay ? 8 : 12} // Less extreme values
+        rayleigh={isDay ? 0.5 : 0.8} // Less extreme for night
+        mieCoefficient={0.003} // Reduced
+        mieDirectionalG={0.7} // Less directional
       />
       
-      {/* Stars (visible at night) */}
-      <Stars 
-        radius={100} 
-        depth={50} 
-        count={5000} 
-        factor={4} 
-        fade 
-        speed={0.5}
-        visible={!isDay} 
-      />
+      {/* Stars with dynamic opacity based on time of day */}
+      <group visible={true}>
+        <Stars 
+          radius={100} 
+          depth={50} 
+          count={1500} // Reduced count for better performance
+          factor={4} 
+          fade 
+          speed={0.1} // Slower animation
+        />
+        {/* Custom shader to control star opacity */}
+        <mesh position={[0, 0, 0]}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial 
+            color="black" 
+            transparent 
+            opacity={isDay ? 0.9 : 0} // Overlay to dim stars during day
+          />
+        </mesh>
+      </group>
       
-      {/* Clouds */}
+      {/* Gentle clouds with fixed properties */}
       <Suspense fallback={null}>
-        <Clouds
-          material={THREE.MeshBasicMaterial}
-          position={[0, 80, 0]}
-          opacity={cloudOpacity}
-          speed={0.2}
-          width={100}
-          segments={20}
-        >
-          {Array.from({ length: 10 }).map((_, i) => (
-            <Cloud 
-              key={i}
-              position={[
-                (Math.random() - 0.5) * 100, 
-                20 + Math.random() * 20, 
-                (Math.random() - 0.5) * 100
-              ]}
-              speed={0.1}
-              opacity={cloudOpacity}
-            />
-          ))}
-        </Clouds>
+        <group position={[0, 80, 0]}>
+          {Array.from({ length: 8 }).map((_, i) => {
+            // Use fixed positions for less random appearance
+            const angle = (i / 8) * Math.PI * 2;
+            const radius = 50 + (i % 3) * 15;
+            return (
+              <Cloud 
+                key={i}
+                position={[
+                  Math.cos(angle) * radius, 
+                  20 + Math.sin(i * 0.5) * 10, 
+                  Math.sin(angle) * radius
+                ]}
+                speed={0.05} // Very slow movement
+                opacity={0.4} // Fixed mid-range opacity
+              />
+            );
+          })}
+        </group>
       </Suspense>
       
       {/* Natural Terrain with height variation */}
